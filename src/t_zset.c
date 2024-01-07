@@ -121,6 +121,7 @@ void zslFree(zskiplist *zsl) {
  * levels are less likely to be returned. */
 int zslRandomLevel(void) {
     int level = 1;
+    //初始化层为1
     while ((random()&0xFFFF) < (ZSKIPLIST_P * 0xFFFF))
         level += 1;
     return (level<ZSKIPLIST_MAXLEVEL) ? level : ZSKIPLIST_MAXLEVEL;
@@ -1333,6 +1334,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int *flags, double *newscore) {
         return 0;
     }
 
+    //如果采用ziplist编码方式时，zsetAdd函数的处理逻辑
     /* Update the sorted set according to its encoding. */
     if (zobj->encoding == OBJ_ENCODING_ZIPLIST) {
         unsigned char *eptr;
@@ -1380,11 +1382,13 @@ int zsetAdd(robj *zobj, double score, sds ele, int *flags, double *newscore) {
             *flags |= ZADD_NOP;
             return 1;
         }
+        //如果采用skiplist编码方式时，zsetAdd函数的处理逻辑
     } else if (zobj->encoding == OBJ_ENCODING_SKIPLIST) {
         zset *zs = zobj->ptr;
         zskiplistNode *znode;
         dictEntry *de;
 
+        //从哈希表中查询新增元素
         de = dictFind(zs->dict,ele);
         if (de != NULL) {
             /* NX? Return, same element already exists. */
@@ -1392,10 +1396,13 @@ int zsetAdd(robj *zobj, double score, sds ele, int *flags, double *newscore) {
                 *flags |= ZADD_NOP;
                 return 1;
             }
+            //从哈希表中查询元素的权重
             curscore = *(double*)dictGetVal(de);
 
+            //如果要更新元素权重值
             /* Prepare the score for the increment if needed. */
             if (incr) {
+                //更新权重值
                 score += curscore;
                 if (isnan(score)) {
                     *flags |= ZADD_NAN;
@@ -1404,6 +1411,7 @@ int zsetAdd(robj *zobj, double score, sds ele, int *flags, double *newscore) {
                 if (newscore) *newscore = score;
             }
 
+            //如果权重发生变化了
             /* Remove and re-insert when score changes. */
             if (score != curscore &&  
                 /* LT? Only update if score is less than current. */
@@ -1411,17 +1419,22 @@ int zsetAdd(robj *zobj, double score, sds ele, int *flags, double *newscore) {
                 /* GT? Only update if score is greater than current. */
                 (!gt || score > curscore)) 
             {
+                //更新跳表结点
                 znode = zslUpdateScore(zs->zsl,curscore,ele,score);
                 /* Note that we did not removed the original element from
                  * the hash table representing the sorted set, so we just
                  * update the score. */
+                //让哈希表元素的值指向跳表结点的权重
                 dictGetVal(de) = &znode->score; /* Update score ptr. */
                 *flags |= ZADD_UPDATED;
             }
             return 1;
+            //如果新元素不存在
         } else if (!xx) {
             ele = sdsdup(ele);
+            //新插入跳表结点
             znode = zslInsert(zs->zsl,score,ele);
+            //新插入哈希表元素
             serverAssert(dictAdd(zs->dict,ele,&znode->score) == DICT_OK);
             *flags |= ZADD_ADDED;
             if (newscore) *newscore = score;

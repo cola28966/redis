@@ -359,7 +359,9 @@ typedef enum {
 /* Anti-warning macro... */
 #define UNUSED(V) ((void) V)
 
+//最大层数为 32
 #define ZSKIPLIST_MAXLEVEL 32 /* Should be enough for 2^64 elements */
+//随机数的值为0.25
 #define ZSKIPLIST_P 0.25      /* Skiplist P = 1/4 */
 
 /* Append only defines */
@@ -961,9 +963,13 @@ struct sharedObjectsStruct {
 
 /* ZSETs use a specialized version of Skiplists */
 typedef struct zskiplistNode {
+    //Sorted Set 中的元素
     sds ele;
+    // 元素权重值
     double score;
+    // 后向指针
     struct zskiplistNode *backward;
+    // 节点的level数组，保存每层上的前向指针和跨度
     struct zskiplistLevel {
         struct zskiplistNode *forward;
         unsigned long span;
